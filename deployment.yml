@@ -31,8 +31,9 @@ metadata:
 spec:
   selector:
     app: healthcare
-  type: LoadBalancer
+  type: NodePort
   ports:
-    - port: 8082         # External port
-      targetPort: 8080   # Match containerPort
+    - port: 8082           # external port (service)
+      targetPort: 8080     # matches containerPort
+      nodePort: 8082       # fixed external node port 
       protocol: TCP
