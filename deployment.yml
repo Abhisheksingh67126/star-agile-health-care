@@ -33,7 +33,8 @@ spec:
     app: healthcare
   type: NodePort
   ports:
-    - port: 8082           # external port (service)
-      targetPort: 8080     # matches containerPort
-      nodePort: 31000       # fixed external node port 
+    - nodePort: 31010
+      port: 8082           
+      targetPort: 8082    
+      nodePort: 31010       
       protocol: TCP
