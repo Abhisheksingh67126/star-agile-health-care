@@ -35,5 +35,5 @@ spec:
   ports:
     - port: 8082           # external port (service)
       targetPort: 8080     # matches containerPort
-      nodePort: 8082       # fixed external node port 
+      nodePort: 31000       # fixed external node port 
       protocol: TCP
