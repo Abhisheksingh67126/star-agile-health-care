@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git url: 'https://github.com/Abhisheksingh67126/star-agile-health-care.git', branch: 'master'
+            }
+        }
+
+        stage('Code Compile & Test') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+
+        stage('Test Package') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Quality Analysis (QA)') {
+            steps {
+                sh 'mvn checkstyle:checkstyle'
+            }
+        }
+
+        stage('Package Application') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t king094/healthcare-project:v1.0.0 .'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASSWORD')]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" | docker login -u king094 --password-stdin
+                        docker push king094/healthcare-project:v1.0.0
+                    '''
+                }
+            }
+        }
+
+        stage('Build Test POC Machine Using Terraform') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                        terraform init
+                        terraform plan
+                        terraform apply --auto-approve
+                    '''
+                    
+                    script {
+                        def publicIp = sh(
+                            script: "terraform output -raw test_server_ip",
+                            returnStdout: true
+                        ).trim()
+
+                        def inventoryContent = """[test-server]
+                            ${publicIp} ansible_user=ubuntu ansible_ssh_private_key_file=KEY-PAIR-POC.pem
+                        """
+                        writeFile file: "inventory.ini", text: inventoryContent
+                    }
+                }
+            }
+        }
+
+        stage('Configure and Deploy to the Test Server') {
+            steps {
+                sh '''
+                    chmod 600 KEY-PAIR-POC.pem
+                    echo "Running Ansible Deployment..."
+                    ansible-playbook -i inventory.ini ansible-playbook.yml \
+                    --private-key KEY-PAIR-POC.pem \
+                    --user ubuntu
+                '''
+            }
+        }
+
+        stage('Deploy to K8s') {
+            steps {
+                sh '''
+                    kubectl apply -f deployment.yml
+                    kubectl rollout status deployment/healthcare
+                    kubectl get svc
+                '''
+            }
+        }
+    }
+}
