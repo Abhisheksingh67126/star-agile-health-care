@@ -1,20 +1,22 @@
-- name : Configure Docker on EC2 Instances
-  hosts : all
+---
+- name: Configure Docker on EC2 Instances
+  hosts: all
   become: true
-  connection : ssh
-  tasks : 
-  - name: updating apt
-    command : sudo apt-get update
+  connection: ssh
 
-  - name : Install Docker
-    command : sudo apt-get install -y docker.io
-    become : yes
-    become_user : root
+  tasks:
+    - name: Updating apt
+      command: apt-get update
 
-  - name : Start Docker Service
-    command : sudo systemctl start docker
-    become : yes
-    become_user : root
+    - name: Install Docker
+      command: apt-get install -y docker.io
 
-  - name: Deploy Docker Container
-    command: docker run -itd -p 8084:8082 shubhamkushwah123/medicure:1.0
+    - name: Start Docker Service
+      command: systemctl start docker
+
+    - name: Stop old container if exists
+      command: docker rm -f healthcare-container
+      ignore_errors: yes
+
+    - name: Deploy Docker Container
+      command: docker run -itd --name healthcare-container -p 8082:8082 king094/healthcare-project:v1.0.0
